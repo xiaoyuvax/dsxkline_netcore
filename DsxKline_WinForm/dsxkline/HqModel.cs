@@ -3,18 +3,18 @@ namespace DsxKline_WinForm.dsxkline
 {
     class HqModel
     {
-        public String name;
-        public String code;
-        public String price;
-        public String lastClose;// 昨收
-        public String open;
-        public String high;
-        public String low;
-        public String vol;
-        public String volAmount;
-        public String date;
-        public String time;
-        public String change;
-        public String changeRatio;
+        public string name;
+        public string code;
+        public string price;
+        public string lastClose;// 昨收
+        public string open;
+        public string high;
+        public string low;
+        public string vol;
+        public string volAmount;
+        public string date;
+        public string time;
+        public string change;
+        public string changeRatio;
     }
 }

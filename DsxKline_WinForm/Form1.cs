@@ -9,9 +9,9 @@ namespace DsxKline_WinForm
     {
         DsxKline dsxkline;
         int page = 1;
-        List<String> datas;
-        String cycle = "day";
-        String code = "sz300059";
+        List<string> datas;
+        string cycle = "day";
+        string code = "sz300502";
         int y = 50;
         int x = 5;
         public Form1()
@@ -23,7 +23,7 @@ namespace DsxKline_WinForm
             dsxkline.onLoading = (() => {
                 Console.WriteLine("onLoading");
                 page = 1;
-                datas = new List<String>();
+                datas = [];
                 if (dsxkline.chartType == DsxKline.ChartType.timeSharing) getQuote(code);
                 if (dsxkline.chartType == DsxKline.ChartType.timeSharing5) getTimeLine5();
                 if (dsxkline.chartType == DsxKline.ChartType.candle) getDay();
@@ -33,7 +33,7 @@ namespace DsxKline_WinForm
                 // .....
 
                 // 完成后执行
-                dsxkline.finishLoading();
+                dsxkline.FinishLoading();
             });
             dsxkline.onCrossing = ((data,index) => {
                 // 十字线滑动数据
@@ -53,77 +53,77 @@ namespace DsxKline_WinForm
             if (i == 4) cycle = "month";
             if (i == 5) cycle = "m1";
 
-            dsxkline.startLoading();
+            dsxkline.StartLoading();
         }
         private void getDay()
         {
-            if (cycle.StartsWith("m") && !cycle.StartsWith("month"))
+            if (cycle.StartsWith('m') && !cycle.StartsWith("month"))
             {
                 if (code.StartsWith("hk") || code.StartsWith("us"))
                 {
-                    dsxkline.finishLoading();
+                    dsxkline.FinishLoading();
                     return;
                 }
-                List<String> data = QqHq.getMinLine(code, cycle, 320);
+                List<string> data = QqHq.GetMinLine(code, cycle, 320);
                 if (data.Count > 0)
                 {
                     //d.data = [];
                     if (page <= 1) datas = data;
 
-                    dsxkline.update(datas,page);
+                    dsxkline.Update(datas,page);
                     page++;
                 }
-                dsxkline.finishLoading();
+                dsxkline.FinishLoading();
                
             }
             else
             {
-                List<String> data = QqHq.getkLine(code, cycle, "", "", 320, "qfqday");
+                List<string> data = QqHq.GetKLine(code, cycle, "", "", 320, "qfqday");
                 if (data.Count > 0)
                 {
                     //d.data = [];
                     if (page <= 1) datas = data;
 
-                    dsxkline.update(datas, page);
+                    dsxkline.Update(datas, page);
                     page++;
                 }
-                dsxkline.finishLoading();
+                dsxkline.FinishLoading();
             }
         }
 
         public void getTimeLine()
         {
-            List<String> data = QqHq.getTimeLine(code);
+            List<string> data = QqHq.GetTimeLine(code);
             if (data.Count > 0)
             {
                 //d.data = [];
                 datas = data;
 
-                dsxkline.update(datas, page);
+                dsxkline.Update(datas, page);
                 page++;
             }
-            dsxkline.finishLoading();
+            dsxkline.FinishLoading();
 
         }
 
         public void getTimeLine5()
         {
-            Dictionary<String,dynamic> data = QqHq.getFdayLine(code);
+            Dictionary<string, dynamic> data = QqHq.GetFdayLine(code);
             if (data.Count > 0)
             {
                 //d.data = [];
                 datas = data["data"];
                 dsxkline.lastClose = data["lastClose"];
-                dsxkline.update(datas, page);
+                dsxkline.Update(datas, page);
                 page++;
             }
-            dsxkline.finishLoading();
+            dsxkline.FinishLoading();
 
         }
 
-        public void getQuote(String code)
+        public void getQuote(string code)
         {
-            List<HqModel> hqModels = QqHq.getQuote(code);
+            List<HqModel> hqModels = QqHq.GetQuote(code);
                 HqModel d = hqModels[0];
             dsxkline.lastClose = double.Parse(d.lastClose);
             if (cycle.Equals("timeline")) getTimeLine();
@@ -131,18 +131,18 @@ namespace DsxKline_WinForm
            
         }
 
-        public void getQuoteRefresh(String code)
+        public void getQuoteRefresh(string code)
         {
             if (dsxkline!=null) return;
-            List<HqModel> data = QqHq.getQuote(code);
+            List<HqModel> data = QqHq.GetQuote(code);
                 HqModel d = data[0];
   
-                var item = d.date.Replace("-", "").Replace("-", "") + "," + d.time.Replace(":", "").Substring(0, 4) + "," + d.price + "," + d.vol + "," + d.volAmount;
+                var item = d.date.Replace("-", "").Replace("-", "") + "," + d.time.Replace(":", "")[..4] + "," + d.price + "," + d.vol + "," + d.volAmount;
                 if (dsxkline.chartType == DsxKline.ChartType.candle)
                 {
                     if (cycle.StartsWith("m1"))
                     {
-                        item = d.date.Replace("-", "").Replace("-", "") + "," + d.time.Replace(":", "").Substring(0, 4) + "," + d.price + "," + d.price + "," + d.price + "," + d.price + "," +d.vol + "," + d.volAmount;
+                        item = d.date.Replace("-", "").Replace("-", "") + "," + d.time.Replace(":", "")[..4] + "," + d.price + "," + d.price + "," + d.price + "," + d.price + "," +d.vol + "," + d.volAmount;
                     }
                     else
                     {
@@ -159,7 +159,7 @@ namespace DsxKline_WinForm
                 if (cycle == "timeline") c = "t";
                 if (cycle == "timeline5") c = "t5";
                 //console.log(cycle+"_"+item);
-                dsxkline.refreshLastOneData(item, c);
+                dsxkline.RefreshLastOneData(item, c);
 
  
 
@@ -174,7 +174,7 @@ namespace DsxKline_WinForm
         }
         private void Form1_SizeChanged(object sender, EventArgs e)
         {
-            dsxkline.SetBounds(x, y, this.ClientRectangle.Width - 2 * x, this.ClientRectangle.Height-y);
+            dsxkline?.SetBounds(x, y, this.ClientRectangle.Width - 2 * x, this.ClientRectangle.Height-y);
         }
 
         private void button1_Click(object sender, EventArgs e)
