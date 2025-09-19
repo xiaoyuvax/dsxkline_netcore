@@ -21,6 +21,8 @@
 	<ItemGroup>
 		<PackageReference Include="CefSharp.WinForms.NETCore" Version="138.0.340" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="System.Text.Encoding.CodePages" Version="9.0.8" />
+		<PackageReference Include="Wima.Core" Version="1.8.1.115" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Update="dsxkline\dsx.kline_v_1_2_0.js">

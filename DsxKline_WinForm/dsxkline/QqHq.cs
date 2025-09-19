@@ -35,7 +35,7 @@ namespace DsxKline_WinForm.dsxkline
                     string item = dataList[i];
                     string rss = item.Replace(resultStart.Replace("{code}", code.ToLower()), "");
                     string[] rs = rss.Split('~');
-                    if (rs[1] != "")
+                    if (rs?.Length > 1 && rs[1] != "")
                     {
                         HqModel obj = new()
                         {
@@ -61,6 +61,22 @@ namespace DsxKline_WinForm.dsxkline
                 }
             }
             return list;
+        }
+
+        public static string ConvertGB2312ToUTF8(string gb2312Text)
+        {
+            // 获取编码实例
+            Encoding gb2312 = Encoding.GetEncoding("GBK"); // GB2312编码[1,2](@ref)
+            Encoding utf8 = Encoding.UTF8;                   // UTF-8编码[4,5](@ref)
+
+            // 将GB2312字符串转为字节数组
+            byte[] gbBytes = gb2312.GetBytes(gb2312Text);
+
+            // 转换字节数组的编码：GB2312 → UTF-8
+            byte[] utf8Bytes = Encoding.Convert(gb2312, utf8, gbBytes);
+
+            // 将UTF-8字节数组解码为字符串
+            return utf8.GetString(utf8Bytes);
         }
 
         public static List<string> GetTimeLine(string code)
@@ -210,7 +226,7 @@ namespace DsxKline_WinForm.dsxkline
                 HttpWebResponse response = (HttpWebResponse)request.GetResponse();
                 Stream stream = response.GetResponseStream();
                 //结果
-                using StreamReader reader = new(stream, Encoding.UTF8);
+                using StreamReader reader = new(stream, Encoding.GetEncoding("gb2312"));
                 result = reader.ReadToEnd();
                 return result;
             }

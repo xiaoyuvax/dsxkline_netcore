@@ -29,4 +29,10 @@ public class CandleData
     public float Score { get; set; }
     public string Time { get; set; }
     public float Vol { get; set; }
+
+
+    public float BodyTop { get; set; }
+    public float BodyBottom { get; set; }
+    public float UpperShadow { get; set; }
+    public float LowerShadow { get; set; }
 }

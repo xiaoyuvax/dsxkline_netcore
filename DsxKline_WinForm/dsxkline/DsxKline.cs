@@ -1,10 +1,10 @@
-﻿using System;
+﻿using CefSharp;
+using CefSharp.WinForms;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Windows.Forms;
-using CefSharp;
-using CefSharp.WinForms;
 
 namespace DsxKline_WinForm.dsxkline;
 
@@ -19,6 +19,8 @@ internal class DsxKline : Control
     public delegate void UpdateComplate();
 
     public delegate void OnCrossing(string data, int index);
+
+
 
     // 图表类型
     public enum ChartType
@@ -59,7 +61,7 @@ internal class DsxKline : Control
     public CandleType candleType = CandleType.hollow;
 
     // 缩放类型 1=左 2=中 3=右 4=跟随
-    public ZoomLockType zoomLockType = ZoomLockType.right;
+    public ZoomLockType zoomLockType = ZoomLockType.left;
 
     // 每次缩放大小
     public double zoomStep = 1;
@@ -181,11 +183,12 @@ internal class DsxKline : Control
         //Console.WriteLine(js);
     }
 
-    public List<CandleData> CandleData { get; set; }
+    public List<CandleData> CandleSet { get; set; }
 
-    public List<CandleData> KeyCandleData => [.. CandleData.Where(i => i.IsKey)];
+    public List<CandleData> KeyCandles => [.. CandleSet.Where(i => i.IsKey)];
 
-    public int AnalysisRadiusPrev { get; set; } = 7;
+    public int AnalysisRadiusPrevMax { get; set; } = 15;
+    public int AnalysisRadiusPrevMin { get; set; } = 3;
     public int AnalysisRadiusNext { get; set; } = 5;
 
     public void Update(List<string> datas, int page)
@@ -196,7 +199,7 @@ internal class DsxKline : Control
         this.Datas = datas;
         this.Page = page;
 
-        CandleData = Datas.Select(i =>
+        CandleSet = Datas.Select(i =>
         {
             var item = i.Split(',');
             var r = item.Length switch
@@ -222,14 +225,40 @@ internal class DsxKline : Control
             return r;
         }).Where(i => i != null).ToList();
 
-        var safeRadius = Math.Max(AnalysisRadiusPrev, AnalysisRadiusNext);
-        if (CandleData.Count > safeRadius * 2)
-            for (int k = CandleData.Count - AnalysisRadiusNext - 1; k > AnalysisRadiusPrev; k--)
+
+
+
+        var safeRadius = Math.Max(AnalysisRadiusPrevMax, AnalysisRadiusNext);
+        if (CandleSet.Count > safeRadius * 2)
+            for (int k = CandleSet.Count - AnalysisRadiusNext - 1; k > AnalysisRadiusPrevMax; k--)
             {
-                var item = CandleData[k];
-                CandleData[] prevCandles = takeNeighbourCandles(k, -1 * AnalysisRadiusPrev);
-                CandleData[] nextCandles = takeNeighbourCandles(k, AnalysisRadiusNext);
-                CandleData[] allCandles = [.. prevCandles, CandleData[k], .. nextCandles];
+                var item = CandleSet[k];
+
+                int p = 0;
+                for (p = k - 1; k - p < AnalysisRadiusPrevMax; p--)
+                {
+                    var candleP = CandleSet[p];
+                    if (k - p > AnalysisRadiusPrevMin)       //在配置的前溯区间外
+                    {
+                        if (candleP.Close > item.Close)      //收盘价高于当前
+                            if (candleP.IsRed)               //红盘日
+                                break;
+                    }
+                    else                                    //在配置的前溯区间内
+                    {
+                        if (candleP.Close > item.Close)
+                        {
+                            p = 0;   //前溯最小区间内收盘价高于当前，放弃
+                            break;
+                        }
+                    }
+                }
+                int prevCloseHigh = p > 0 ? p + 1 : 0;          //前溯区间内收盘价高于当前的红盘日位置（不包含）,或没有找到
+                if (prevCloseHigh == 0) continue;           //前溯区间内没有找到收盘价高于当前的红盘日
+
+                CandleData[] prevCandles = TakeCandles(k, -1 * prevCloseHigh);
+                CandleData[] nextCandles = TakeCandles(k, AnalysisRadiusNext);
+                CandleData[] allCandles = [.. prevCandles, CandleSet[k], .. nextCandles];
                 var maxVol = allCandles.Max(i => i.Vol);
                 var maxGain = allCandles.Max(i => i.Gain);
                 var avgVolPrev = prevCandles.Average(i => i.Vol);
@@ -245,8 +274,10 @@ internal class DsxKline : Control
                     item.Score = 0;
                     for (int n = 1; n <= 5; n++)
                     {
-                        var nextN = CandleData[k + n];
-                        if (nextN.IsGreen && nextN.Close < item.Close && nextN.Close > item.Open)
+                        var nextN = CandleSet[k + n];       //下n日K线数据
+                        if (nextN.IsGreen
+                            && nextN.Close < item.Close     //收盘价低于当前 
+                            && nextN.Close > item.Open)     //收盘价高于当前开盘价
                         {
                             item.Score++;
                             if (nextN.Low > item.Low) item.Score += 0.5f;
@@ -255,40 +286,41 @@ internal class DsxKline : Control
                         else if (n == 1) break;
                     }
                     item.IsKey = item.Score > 5;
+                    if (item.IsKey) Debugger.Break();
                 }
             }
 
-        CandleData[] takeNeighbourCandles(int i, int count)
-        {
-            CandleData[] neighbours = null;
-
-            if (count != 0)
-            {
-                var abs = Math.Abs(count);
-                neighbours = new CandleData[Math.Abs(abs)];
-                var sign = count / abs;
-                if ((sign > 0 & sign * abs + i < CandleData.Count) || (sign < 0 & sign * abs + i >= 0))
-                    for (int n = 1; n <= abs; n++)
-                    {
-                        var n1 = sign * n;
-                        neighbours[n - 1] = CandleData[i + n1];
-                    }
-            }
-
-            return neighbours;
-        }
-
         string js = "if(kline){" +
             "kline.update({" +
-            "datas:" + data + "," +
-            "page:'" + page + "'," +
-            "chartType:" + (int)chartType + "," +
-            (lastClose > 0 ? "lastClose: " + lastClose + "," : "") +
-            "main:" + Newtonsoft.Json.JsonConvert.SerializeObject(main) + "," +
-            "sides:" + Newtonsoft.Json.JsonConvert.SerializeObject(sides) + ", " +
+            $"datas:{data}," +
+            $"page:'{page}'," +
+            $"chartType:{(int)chartType}," +
+            (lastClose > 0 ? $"lastClose: {lastClose}," : "") +
+            $"main:{Newtonsoft.Json.JsonConvert.SerializeObject(main)}," +
+            $"sides:{Newtonsoft.Json.JsonConvert.SerializeObject(sides)}," +
         "})};" +
-        $"keyCandles={Newtonsoft.Json.JsonConvert.SerializeObject(KeyCandleData.Select(i => i.Date + i.Time).ToArray())};";
+        $"keyCandles={Newtonsoft.Json.JsonConvert.SerializeObject(KeyCandles.Select(i => i.Date + i.Time).ToArray())};";
         browser.ExecuteScriptAsync(js);
+    }
+
+    private CandleData[] TakeCandles(int i, int count)
+    {
+        CandleData[] neighbours = null;
+
+        if (count != 0)
+        {
+            var abs = Math.Abs(count);
+            neighbours = new CandleData[Math.Abs(abs)];
+            var sign = count / abs;
+            if ((sign > 0 & sign * abs + i < CandleSet.Count) || (sign < 0 & sign * abs + i >= 0))
+                for (int n = 1; n <= abs; n++)
+                {
+                    var n1 = sign * n;
+                    neighbours[n - 1] = CandleSet[i + n1];
+                }
+        }
+
+        return neighbours;
     }
 
     /**
@@ -300,7 +332,7 @@ internal class DsxKline : Control
     {
         if (browser == null) return;
         if (!browser.IsBrowserInitialized) return;
-        string js = "kline.chartType=" + (int)chartType + ";kline.startLoading();";
+        string js = $"kline.chartType={(int)chartType};kline.startLoading();";
         browser.ExecuteScriptAsync(js);
     }
 
@@ -321,7 +353,7 @@ internal class DsxKline : Control
     /// <param name="cycle">t,t5,d,w,m,m1,m5,m30</param>
     public void RefreshLastOneData(string item, string cycle)
     {
-        string js = "kline.refreshLastOneData('" + item + "','" + cycle + "');";
+        string js = $"kline.refreshLastOneData('{item}','{cycle}');";
         browser.ExecuteScriptAsync(js);
     }
 
@@ -381,3 +413,4 @@ internal class DsxKline : Control
         }
     }
 }
+
